@@ -1,0 +1,67 @@
+from kafka import KafkaProducer
+from kafka import KafkaConsumer
+
+class Producer():
+    def __init__(self) :
+        self.Topic_host = ['localhost:9092']
+        self.Topic = "testTopic"
+    
+    def producer_set(self , host=None , topics =None) :
+        if topics != None:
+            self.Topic = str(topics)
+        
+        if host != None :
+            self.Host = host
+        
+        self.producer = KafkaProducer(
+            bootstrap_servers=self.Host, value_serializer=lambda v: v.encode('utf-8'))
+    
+    
+    def send(self, message, key=None , react=True) :
+        if key ==None :
+            if react:
+                future = self.producer.send(self.Topic, value=message)
+                result = future.get(timeout=10)
+                return result
+            else :
+                self.producer.send(self.Topic , value= message  )
+
+        elif key !=None:
+            if react:
+                future = self.producer.send(self.Topic, WeakValueDictionary=message , key=key)
+                result = future.get(timeout=10)
+                return result
+            else :
+                self.producer.send(self.Topic, value=message, key=key)
+        else :
+            print("error")
+class Consumer():
+    def __init__(self ):
+        self.Host = ['localhost:9092']
+        self.Topic = "testTopic"
+        self.waiting_ms =1000
+
+    def consumer_set(self, host=None, topics=None , wait=False):
+        if topics != None:
+            self.Topic = str(topics)
+
+        if host != None:
+            self.Host = host
+        if wait :
+            self.consumer = KafkaConsumer(self.Topic, bootstrap_servers=self.Host, value_deserializer = lambda v : v.decode('utf-8'),  consumer_timeout_ms=self.waiting_ms)
+        else :
+            self.consumer = KafkaConsumer(self.Topic, bootstrap_servers=self.Host , value_deserializer = lambda v : v.decode('utf-8'))
+
+    def listen(self , tp=None):
+        if tp ==None:
+            for msg in self.consumer:
+                print(msg)
+        else :
+            tp = tp.lower()
+            if tp=="ms":
+                for msg in self.consumer:
+                    print(msg.value)
+            elif tp =="msk":
+                for msg in self.consumer:
+                    print("value :" ,msg.value)
+                    print("key :" , msg.key)
