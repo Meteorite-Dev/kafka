@@ -35,22 +35,47 @@ class Producer():
                 self.producer.send(self.Topic, value=message, key=key)
         else :
             print("error")
+    
+    def tsend(self ,topics, message, key=None, react=True):
+        if key == None:
+            if react:
+                future = self.producer.send(topics, value=message)
+                result = future.get(timeout=10)
+                return result
+            else:
+                self.producer.send(topics, value=message)
+
+        elif key != None:
+            if react:
+                future = self.producer.send(
+                    topics, WeakValueDictionary=message, key=key)
+                result = future.get(timeout=10)
+                return result
+            else:
+                self.producer.send(topics, value=message, key=key)
+        else:
+            print("error")
+
 class Consumer():
     def __init__(self ):
         self.Host = ['localhost:9092']
         self.Topic = "testTopic"
-        self.waiting_ms =1000
+        self.waiting_ms =10000
 
     def consumer_set(self, host=None, topics=None , wait=False):
-        if topics != None:
-            self.Topic = str(topics)
+        if topics ==None:
+            topics =self.Topic
 
         if host != None:
             self.Host = host
+        
         if wait :
-            self.consumer = KafkaConsumer(self.Topic, bootstrap_servers=self.Host, value_deserializer = lambda v : v.decode('utf-8'),  consumer_timeout_ms=self.waiting_ms)
+            self.consumer = KafkaConsumer( bootstrap_servers=self.Host, value_deserializer = lambda v : v.decode('utf-8'),  consumer_timeout_ms=self.waiting_ms)
         else :
-            self.consumer = KafkaConsumer(self.Topic, bootstrap_servers=self.Host , value_deserializer = lambda v : v.decode('utf-8'))
+            self.consumer = KafkaConsumer( bootstrap_servers=self.Host , value_deserializer = lambda v : v.decode('utf-8'))
+
+        self.consumer.subscribe(topics)
+
 
     def listen(self , tp=None):
         if tp ==None:

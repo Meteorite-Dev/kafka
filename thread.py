@@ -1,22 +1,27 @@
-# import threading
+import threading
+from kafbasic import Producer
 
-# def thr():
-#     for i in range(5) :
-#         print("thread " , i )
+producer = Producer()
+producer.producer_set(host=['localhost:9092'] ,topics="testTopic")
 
-# t = threading.Thread(target=thr)
+def prod(thrnum) :
+    for i in range(100) :
+        mes = "test" +" : "+str(thrnum)
+        res = producer.tsend(topics="thread" + str(thrnum) , message=mes , react=True)
+        print(res)
+threads = []
+for i in range(5) :
+    threads.append( threading.Thread(target=prod , args=(i,)) )
 
-# t. start()
+    threads[i].start()
+    print(i)
+
+print("main")
+
+print(threading.active_count())
 
 # for i in range(5):
-#     print("main " ,i)
+#     threads[i].join()
 
-# t.join()
 
-# print("done.")
-
-a = int(1)
-print(type(a))
-print(type(str()))
-if type(a) !=type(str()) :
-    print("no str")
+print("done.")
