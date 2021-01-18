@@ -1,7 +1,8 @@
 from kafbasic import Producer
-
+import time
 producer = Producer()
-producer.producer_set(host=['localhost:9092'] ,topics="testTopic")
+producer.producer_set(host=['node04:9092'] ,topics="testTopic")
+
 
 
 while True :
