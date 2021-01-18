@@ -59,7 +59,7 @@ class Producer():
 class Consumer():
     def __init__(self ):
         self.Host = ['localhost:9092']
-        self.Topic = "testTopic"
+        self.Topic = ['testTopic']
         self.waiting_ms =10000
 
     def consumer_set(self, host=None, topics=None , wait=False):
