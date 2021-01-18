@@ -6,37 +6,39 @@ class Producer():
         self.Topic_host = ['localhost:9092']
         self.Topic = "testTopic"
     
-    def producer_set(self , host=None , topics =None) :
-        if topics != None:
-            self.Topic = str(topics)
+    def producer_set(self , host=None , serializer=None) :
+
         
         if host != None :
             self.Host = host
         
-        self.producer = KafkaProducer(
-            bootstrap_servers=self.Host, value_serializer=lambda v: v.encode('utf-8'))
-    
-    
-    def send(self, message, key=None , react=True) :
-        if key ==None :
-            if react:
-                future = self.producer.send(self.Topic, value=message)
-                result = future.get(timeout=10)
-                return result
-            else :
-                self.producer.send(self.Topic , value= message  )
+        if serializer == None:
+            serializer = lambda v : v.encode('utf-8')
 
-        elif key !=None:
-            if react:
-                future = self.producer.send(self.Topic, WeakValueDictionary=message , key=key)
-                result = future.get(timeout=10)
-                return result
-            else :
-                self.producer.send(self.Topic, value=message, key=key)
-        else :
-            print("error")
+        self.producer = KafkaProducer(
+            bootstrap_servers=self.Host, value_serializer=serializer, max_request_size=32000000)
     
-    def tsend(self ,topics, message, key=None, react=True):
+    
+    # def send(self, message, key=None , react=True) :
+    #     if key ==None :
+    #         if react:
+    #             future = self.producer.send(self.Topic, value=message)
+    #             result = future.get(timeout=10)
+    #             return result
+    #         else :
+    #             self.producer.send(self.Topic , value= message  )
+
+    #     elif key !=None:
+    #         if react:
+    #             future = self.producer.send(self.Topic, WeakValueDictionary=message , key=key)
+    #             result = future.get(timeout=10)
+    #             return result
+    #         else :
+    #             self.producer.send(self.Topic, value=message, key=key)
+    #     else :
+    #         print("error")
+    
+    def send(self ,topics, message, key=None, react=True):
         if key == None:
             if react:
                 future = self.producer.send(topics, value=message)
