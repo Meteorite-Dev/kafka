@@ -1,12 +1,13 @@
 from kafbasic import Producer
 import time
+
 producer = Producer()
-producer.producer_set(host=['node04:9092'] ,topics="testTopic")
+producer.producer_set(host=['node04:9092'] )
 
 
 
 while True :
-    mes = input("message : ")
-
-    res = producer.send(message=mes , react=True)
-    print(res)
+    st = int(time.time()*1000) % 86400000
+    mes = str(st)
+    print(mes)
+    producer.send(topics="testTopic" ,message=mes, react=False)
