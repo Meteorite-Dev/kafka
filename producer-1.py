@@ -10,7 +10,7 @@ from kafka import KafkaProducer
 producer = KafkaProducer(bootstrap_servers='node04:9092',max_request_size=32000000)
 
 path="/mnt/sdd1/video/2020-10-20_12:00:01.avi"
-capture = cv2.VideoCapture("rtsp://140.132.48.228")
+capture = cv2.VideoCapture(0)
 capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 print('ipcam started!')
 
