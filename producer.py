@@ -60,9 +60,7 @@ def cam(tp):
 
 
 def multithread_publish():
-    # fi =sys.argv[0]
-    # linum =sys.argv[1]
-    linum = 8
+    linum = 8 # video number?
     base_dir = "/media/cluster/0EA405370EA40537/"
     path = [
         base_dir + "video/2020-10-20_12:00:01.avi",
@@ -142,10 +140,11 @@ def measure(cam=False):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-w", "--width", help="input width", default=1280, type=int)
-    parser.add_argument("-H", "--height", help="input height", default=720, type=int)
-    parser.add_argument("-f", "--fps", help="video frame rate", default=30, type=int)
-    parser.add_argument("-t", "--thread", help="number of threads", default=8, type=int)
+    parser.add_argument("--width", help="input width", default=1280, type=int)
+    parser.add_argument("--height", help="input height", default=720, type=int)
+    parser.add_argument("--fps", help="video frame rate", default=30, type=int)
+    parser.add_argument("--thread", help="number of threads", default=8, type=int)
+    parser.add_argument("--camtest", help="use webcam to measure latency", action="store_true")
     args = parser.parse_args()
     return args
 
@@ -153,5 +152,5 @@ def parse_args():
 if __name__ == "__main__":
     # multithread_publish()
     args = parse_args()
-    # measure(True)
+    measure(args.camtest)
     pass
