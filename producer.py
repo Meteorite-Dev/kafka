@@ -49,11 +49,14 @@ def publish_video(tp):
         future = producer.send(topicname, data)
 
         try:
-            windows_name = "producer" + str(tp[1])
+            windows_name = "producer" + serial
             cv2.namedWindow(windows_name, cv2.WINDOW_NORMAL)
             cv2.resizeWindow(windows_name, 200, 200)
             cv2.imshow(windows_name, frame)
             if cv2.waitKey(1) & 0xFF == ord("q"):
+                capture.release()
+                cv2.destroyAllWindows()
+                print("------------stop------------")
                 break
             # metadata = future.get(timeout=1)
             # print(metadata.offset)
@@ -61,21 +64,12 @@ def publish_video(tp):
             print(e)
             break
 
-        if cv2.waitKey(1) == 27:
-            capture.release()
-            cv2.destroyAllWindows()
-            print("------------stop------------")
-            break
-
-    capture.release()
-    cv2.destroyAllWindows()
-
-
 def multithread_publish(args):
     video_dir = "/media/cluster/0EA405370EA40537/video/"
     video_list = []
     for fname in os.listdir(video_dir):
-        video_list.append(fname)
+        video_list.append(os.path.join(video_dir,fname))
+        # video_list.append(psfname)
     if args.random:
         random.shuffle(video_list)
 
@@ -94,7 +88,7 @@ def multithread_publish(args):
     pool.close()
     pool.join()
 
-    print(res)
+    # print(res)
 
 
 def measure(args):
