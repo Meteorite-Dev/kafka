@@ -1,6 +1,7 @@
 from kafka import KafkaConsumer
 import cv2
 import numpy as np
+from multiprocessing import Process,Pool
 # To consume latest messages and auto-commit offsets
 topic = 'topic1'
 consumer = KafkaConsumer(topic,
