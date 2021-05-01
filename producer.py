@@ -1,4 +1,4 @@
-from kafka import KafkaProducer
+from kafka import KafkaProducer, producer
 from kafka.errors import KafkaError
 import cv2
 import os
@@ -8,18 +8,20 @@ import argparse
 from string import Template
 import random
 
-# #kafka configuration
-try:
-    producer = KafkaProducer(
-        bootstrap_servers=["server:9092"], max_request_size=3145728,
-        request_timeout_ms=1000
-    )
-except KafkaError as e:
-    print(e)
-
 topic = "topic1"
 topic_tempstr = Template("topic${thread}_${serial}")
+kafkaserver = Template("${serveraddr}:9092")
 
+def setting_kafka(server,size=3145728):
+    try:
+        kafkastr = kafkaserver.substitute(serveraddr=server)
+        producer = KafkaProducer(
+            bootstrap_servers=[kafkastr], max_request_size=size,
+            request_timeout_ms=1000
+        )
+        return producer
+    except KafkaError as e:
+        print(e)
 
 def setting_capture(path):
     args = get_args()
@@ -35,10 +37,7 @@ def publish_video(tp):
     file = tp[0]
     serial = tp[1]
     topicname = tp[2]
-
-    producer = KafkaProducer(
-        bootstrap_servers=["localhost:9092"], max_request_size=3145728
-    )
+    producer = setting_kafka("server")
     capture = setting_capture(str(file))
 
     print("Process %s start !" % (serial))
@@ -87,7 +86,7 @@ def multithread_publish(args):
 
     multithread_args = []
     for i in range(args.thread * args.topicperthread):
-        multithread_args.append((video_list[i], i, topicstr[i]))
+        multithread_args.append((video_list[i], (i%args.topicperthread)+1, topicstr[i]))
         print(multithread_args[i])
 
     pool = Pool(args.thread)
@@ -101,6 +100,7 @@ def multithread_publish(args):
 def measure(args):
     if args.camtest:
         print("image !!!")
+        producer=setting_kafka("server")
         capture=setting_capture(0)
         list_time = []
         for i in range(100):
@@ -152,5 +152,5 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
     multithread_publish(args)
-    # measure(args.camtest)
+    # measure(args)
     pass
