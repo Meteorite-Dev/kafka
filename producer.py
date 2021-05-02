@@ -25,8 +25,8 @@ def setting_kafka(server,size=3145728):
 
 def setting_capture(path):
     args = get_args()
-    capture = cv2.VideoCapture(path, cv2.CAP_V4L2)
-    capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+    capture = cv2.VideoCapture(path)
+    # capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     capture.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
     capture.set(cv2.CAP_PROP_FPS, args.fps)
@@ -38,31 +38,22 @@ def publish_video(tp):
     serial = tp[1]
     topicname = tp[2]
     producer = setting_kafka("server")
-    capture = setting_capture(str(file))
-
-    print("Process %s start !" % (serial))
-
-    while capture.isOpened():
+    capture = setting_capture(file)
+    print("%s start !" % (topicname))
+    timelist = []
+    for i in range(400):
         _, frame = capture.read()
+        if(i<100): continue
         # encode frame to jpeg then tobytes
         data = cv2.imencode(".jpeg", frame)[1].tobytes()
         future = producer.send(topicname, data)
-
-        try:
-            windows_name = "producer" + serial
-            cv2.namedWindow(windows_name, cv2.WINDOW_NORMAL)
-            cv2.resizeWindow(windows_name, 200, 200)
-            cv2.imshow(windows_name, frame)
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                capture.release()
-                cv2.destroyAllWindows()
-                print("------------stop------------")
-                break
-            # metadata = future.get(timeout=1)
-            # print(metadata.offset)
-        except KafkaError as e:
-            print(e)
-            break
+        metadata = future.get(timeout=1)
+        now_time = round(time.time() * 1000)
+        send_time = metadata.timestamp
+        timelist.append((now_time-send_time)/2)
+    mean_intervaltime = sum(timelist)/len(timelist)
+    print("%s stop !" % (topicname))
+    return mean_intervaltime
 
 def multithread_publish(args):
     video_dir = "/media/cluster/0EA405370EA40537/video/"
@@ -80,14 +71,15 @@ def multithread_publish(args):
 
     multithread_args = []
     for i in range(args.thread * args.topicperthread):
-        multithread_args.append((video_list[i], (i%args.topicperthread)+1, topicstr[i]))
+        multithread_args.append((video_list[i], int((i/args.topicperthread)+1), topicstr[i]))
         print(multithread_args[i])
 
     pool = Pool(args.thread)
-    res = pool.map(publish_video, multithread_args)
+    data = pool.map(publish_video, multithread_args)
     pool.close()
     pool.join()
-
+    print("----------------------------------------------")
+    print("final mean time : ",sum(data)/len(data))
     # print(res)
 
 
@@ -128,7 +120,7 @@ def get_args():
     parser.add_argument("--width", help="input width", default=1280, type=int)
     parser.add_argument("--height", help="input height", default=720, type=int)
     parser.add_argument("--fps", help="video frame rate", default=30, type=int)
-    parser.add_argument("--thread", help="number of threads", default=8, type=int)
+    parser.add_argument("--thread", help="number of threads", default=4, type=int)
     parser.add_argument(
         "--camtest", help="use webcam to measure latency", action="store_true"
     )
@@ -147,4 +139,19 @@ if __name__ == "__main__":
     args = get_args()
     multithread_publish(args)
     # measure(args)
-    pass
+
+# try:
+        #     windows_name = "producer" + str(serial)
+        #     cv2.namedWindow(windows_name, cv2.WINDOW_NORMAL)
+        #     cv2.resizeWindow(windows_name, 200, 200)
+        #     cv2.imshow(windows_name, frame)
+        #     if cv2.waitKey(1) & 0xFF == ord("q"):
+        #         capture.release()
+        #         cv2.destroyAllWindows()
+        #         print("Process %s stop !" % (topicname))
+        #         break
+        #     # metadata = future.get(timeout=1)
+        #     # print(metadata.offset)
+        # except KafkaError as e:
+        #     print(e)
+        #     break
