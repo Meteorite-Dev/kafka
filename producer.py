@@ -12,12 +12,11 @@ topic = "topic1"
 topic_tempstr = Template("topic${thread}_${serial}")
 kafkaserver = Template("${serveraddr}:9092")
 
-def setting_kafka(server,size=3145728):
+def setting_kafka(server, size=3145728):
     try:
         kafkastr = kafkaserver.substitute(serveraddr=server)
         producer = KafkaProducer(
-            bootstrap_servers=[kafkastr], max_request_size=size,
-            request_timeout_ms=1000
+            bootstrap_servers=[kafkastr], max_request_size=size, request_timeout_ms=1000
         )
         return producer
     except KafkaError as e:
@@ -32,26 +31,28 @@ def setting_capture(path):
     capture.set(cv2.CAP_PROP_FPS, args.fps)
     return capture
 
-
 def publish_video(tp):
     file = tp[0]
     serial = tp[1]
     topicname = tp[2]
+    args = get_args()
     producer = setting_kafka("server")
     capture = setting_capture(file)
     print("%s start !" % (topicname))
     timelist = []
-    for i in range(400):
+    totalframe = args.sendframe + args.dropframe
+    for i in range(totalframe):
         _, frame = capture.read()
-        if(i<100): continue
+        if i < args.dropframe:
+            continue
         # encode frame to jpeg then tobytes
         data = cv2.imencode(".jpeg", frame)[1].tobytes()
-        future = producer.send(topicname, data)
+        future = producer.send(topicname, value=data)
         metadata = future.get(timeout=1)
         now_time = round(time.time() * 1000)
         send_time = metadata.timestamp
-        timelist.append((now_time-send_time)/2)
-    mean_intervaltime = sum(timelist)/len(timelist)
+        timelist.append((now_time - send_time) / 2)
+    mean_intervaltime = sum(timelist) / len(timelist)
     print("%s stop !" % (topicname))
     return mean_intervaltime
 
@@ -59,11 +60,9 @@ def multithread_publish(args):
     video_dir = "/media/cluster/0EA405370EA40537/video/"
     video_list = []
     for fname in os.listdir(video_dir):
-        video_list.append(os.path.join(video_dir,fname))
-        # video_list.append(psfname)
+        video_list.append(os.path.join(video_dir, fname))
     if args.random:
         random.shuffle(video_list)
-
     topicstr = []
     for i in range(1, args.thread + 1):
         for j in range(1, args.topicperthread + 1):
@@ -71,7 +70,9 @@ def multithread_publish(args):
 
     multithread_args = []
     for i in range(args.thread * args.topicperthread):
-        multithread_args.append((video_list[i], int((i/args.topicperthread)+1), topicstr[i]))
+        multithread_args.append(
+            (video_list[i], int((i / args.topicperthread) + 1), topicstr[i])
+        )
         print(multithread_args[i])
 
     pool = Pool(args.thread)
@@ -79,41 +80,8 @@ def multithread_publish(args):
     pool.close()
     pool.join()
     print("----------------------------------------------")
-    print("final mean time : ",sum(data)/len(data))
+    print("final mean time : ", sum(data) / len(data))
     # print(res)
-
-
-def measure(args):
-    if args.camtest:
-        print("image !!!")
-        producer=setting_kafka("server")
-        capture=setting_capture(0)
-        list_time = []
-        for i in range(100):
-            ret, frame = capture.read()
-            # encode frame to jpeg then tobytes
-            data = cv2.imencode(".jpeg", frame)[1].tobytes()
-
-            future = producer.send(topic, value=data)
-            metadata = future.get(timeout=1)
-            now_time = round(time.time() * 1000)
-            send_time = metadata.timestamp
-            # print("now time : %d " % (now_time))
-            # print("send time : %d " % (send_time))
-            list_time.append((now_time - send_time) / 2)
-            # interval_time = (now_time-send_time)/2
-            # print("interval time : %d" %(interval_time))
-        interval_time = sum(list_time) / len(list_time)
-        print("mean interval time : %.2f" % (interval_time))
-    else:
-        future = producer.send(topic, value=b"raw_bytes")
-        metadata = future.get(timeout=1)
-        now_time = round(time.time() * 1000)
-        send_time = metadata.timestamp
-        print("now time : %d " % (now_time))
-        print("send time : %d " % (send_time))
-        print("interval time : %d" % (now_time - send_time))
-
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -121,6 +89,8 @@ def get_args():
     parser.add_argument("--height", help="input height", default=720, type=int)
     parser.add_argument("--fps", help="video frame rate", default=30, type=int)
     parser.add_argument("--thread", help="number of threads", default=4, type=int)
+    parser.add_argument("--sendframe", help="frame to send", default=900, type=int)
+    parser.add_argument("--dropframe", help="frame to drop", default=90, type=int)
     parser.add_argument(
         "--camtest", help="use webcam to measure latency", action="store_true"
     )
@@ -141,17 +111,48 @@ if __name__ == "__main__":
     # measure(args)
 
 # try:
-        #     windows_name = "producer" + str(serial)
-        #     cv2.namedWindow(windows_name, cv2.WINDOW_NORMAL)
-        #     cv2.resizeWindow(windows_name, 200, 200)
-        #     cv2.imshow(windows_name, frame)
-        #     if cv2.waitKey(1) & 0xFF == ord("q"):
-        #         capture.release()
-        #         cv2.destroyAllWindows()
-        #         print("Process %s stop !" % (topicname))
-        #         break
-        #     # metadata = future.get(timeout=1)
-        #     # print(metadata.offset)
-        # except KafkaError as e:
-        #     print(e)
-        #     break
+#     windows_name = "producer" + str(serial)
+#     cv2.namedWindow(windows_name, cv2.WINDOW_NORMAL)
+#     cv2.resizeWindow(windows_name, 200, 200)
+#     cv2.imshow(windows_name, frame)
+#     if cv2.waitKey(1) & 0xFF == ord("q"):
+#         capture.release()
+#         cv2.destroyAllWindows()
+#         print("Process %s stop !" % (topicname))
+#         break
+#     # metadata = future.get(timeout=1)
+#     # print(metadata.offset)
+# except KafkaError as e:
+#     print(e)
+#     break
+
+# def measure(args):
+#     if args.camtest:
+#         print("image !!!")
+#         producer = setting_kafka("server")
+#         capture = setting_capture(0)
+#         list_time = []
+#         for i in range(100):
+#             ret, frame = capture.read()
+#             # encode frame to jpeg then tobytes
+#             data = cv2.imencode(".jpeg", frame)[1].tobytes()
+
+#             future = producer.send(topic, value=data)
+#             metadata = future.get(timeout=1)
+#             now_time = round(time.time() * 1000)
+#             send_time = metadata.timestamp
+#             # print("now time : %d " % (now_time))
+#             # print("send time : %d " % (send_time))
+#             list_time.append((now_time - send_time) / 2)
+#             # interval_time = (now_time-send_time)/2
+#             # print("interval time : %d" %(interval_time))
+#         interval_time = sum(list_time) / len(list_time)
+#         print("mean interval time : %.2f" % (interval_time))
+#     else:
+#         future = producer.send(topic, value=b"raw_bytes")
+#         metadata = future.get(timeout=1)
+#         now_time = round(time.time() * 1000)
+#         send_time = metadata.timestamp
+#         print("now time : %d " % (now_time))
+#         print("send time : %d " % (send_time))
+#         print("interval time : %d" % (now_time - send_time))
