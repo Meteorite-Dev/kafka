@@ -10,10 +10,10 @@ topic = 'topic1'
 topic_tempstr = Template("topic${thread}_${serial}")
 kafkaserver = Template("${serveraddr}:9092")
 
-def setting_kafka(server, size=3145728):
+def setting_kafka(server):
     kafkastr = kafkaserver.substitute(serveraddr=server)
     consumer = KafkaConsumer(
-            bootstrap_servers=[kafkastr], max_request_size=size, request_timeout_ms=1000
+            bootstrap_servers=[kafkastr]
         )
     return consumer 
 
@@ -23,8 +23,8 @@ def get_args():
     parser.add_argument("--height", help="input height", default=720, type=int)
     parser.add_argument("--fps", help="video frame rate", default=30, type=int)
     parser.add_argument("--thread", help="number of threads", default=4, type=int)
-    parser.add_argument("--sendframe", help="frame to send", default=900, type=int)
-    parser.add_argument("--dropframe", help="frame to drop", default=90, type=int)
+    parser.add_argument("--sendframe", help="frame to send", default=300, type=int)
+    parser.add_argument("--dropframe", help="frame to drop", default=30, type=int)
     parser.add_argument(
         "--camtest", help="use webcam to measure latency", action="store_true"
     )
@@ -47,6 +47,7 @@ def consume_video(tp):
     timelist = []
 
     for msg in consumer:
+        print(msg.offset)
         # img_byte = msg.value
         # frame = cv2.imdecode(np.frombuffer(img_byte,np.uint8),-1)
         # # print(frame.shape)
