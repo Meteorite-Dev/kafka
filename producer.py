@@ -1,4 +1,4 @@
-from kafka import KafkaProducer, producer
+from kafka import KafkaProducer
 from kafka.errors import KafkaError
 import cv2
 import os
@@ -7,9 +7,7 @@ import time
 import argparse
 from string import Template
 import random
-
-topic_tempstr = Template("topic${thread}_${serial}")
-kafkaserver = Template("${serveraddr}:9092")
+import csv
 
 def setting_kafka(server, size=3145728):
     try:
@@ -29,6 +27,13 @@ def setting_capture(path):
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
     capture.set(cv2.CAP_PROP_FPS, args.fps)
     return capture
+
+def writecsv(data):
+    file = "producer.csv"
+    with open(file,'a+',newline="\n", encoding='utf-8') as f:
+        csv_write = csv.writer(f)
+        data_raw = data
+        csv_write.writerow(data_raw)
 
 def publish_video(tp):
     file = tp[0]
@@ -72,14 +77,17 @@ def multithread_publish(args):
         multithread_args.append(
             (video_list[i], int((i / args.topicperthread) + 1), topicstr[i])
         )
-        print(multithread_args[i])
+        # print(multithread_args[i])
 
     pool = Pool(args.thread)
     data = pool.map(publish_video, multithread_args)
     pool.close()
     pool.join()
     print("----------------------------------------------")
-    print("final mean time : ", sum(data) / len(data))
+    latency = sum(data) / len(data)
+    print("final mean time : ", latency)
+    write_data=(args.thread,args.topicperthread,latency)
+    writecsv(write_data)
     # print(res)
 
 def get_args():
@@ -105,53 +113,7 @@ def get_args():
 
 
 if __name__ == "__main__":
+    topic_tempstr = Template("topic${thread}_${serial}")
+    kafkaserver = Template("${serveraddr}:9092")
     args = get_args()
     multithread_publish(args)
-    # measure(args)
-
-# try:
-#     windows_name = "producer" + str(serial)
-#     cv2.namedWindow(windows_name, cv2.WINDOW_NORMAL)
-#     cv2.resizeWindow(windows_name, 200, 200)
-#     cv2.imshow(windows_name, frame)
-#     if cv2.waitKey(1) & 0xFF == ord("q"):
-#         capture.release()
-#         cv2.destroyAllWindows()
-#         print("Process %s stop !" % (topicname))
-#         break
-#     # metadata = future.get(timeout=1)
-#     # print(metadata.offset)
-# except KafkaError as e:
-#     print(e)
-#     break
-
-# def measure(args):
-#     if args.camtest:
-#         print("image !!!")
-#         producer = setting_kafka("server")
-#         capture = setting_capture(0)
-#         list_time = []
-#         for i in range(100):
-#             ret, frame = capture.read()
-#             # encode frame to jpeg then tobytes
-#             data = cv2.imencode(".jpeg", frame)[1].tobytes()
-
-#             future = producer.send(topic, value=data)
-#             metadata = future.get(timeout=1)
-#             now_time = round(time.time() * 1000)
-#             send_time = metadata.timestamp
-#             # print("now time : %d " % (now_time))
-#             # print("send time : %d " % (send_time))
-#             list_time.append((now_time - send_time) / 2)
-#             # interval_time = (now_time-send_time)/2
-#             # print("interval time : %d" %(interval_time))
-#         interval_time = sum(list_time) / len(list_time)
-#         print("mean interval time : %.2f" % (interval_time))
-#     else:
-#         future = producer.send(topic, value=b"raw_bytes")
-#         metadata = future.get(timeout=1)
-#         now_time = round(time.time() * 1000)
-#         send_time = metadata.timestamp
-#         print("now time : %d " % (now_time))
-#         print("send time : %d " % (send_time))
-#         print("interval time : %d" % (now_time - send_time))
