@@ -1,5 +1,5 @@
-from kafka import KafkaProducer
-from kafka.errors import KafkaError
+from confluent_kafka  import KafkaProducer
+from confluent_kafka .errors import KafkaError
 import cv2
 import os
 from multiprocessing import Pool

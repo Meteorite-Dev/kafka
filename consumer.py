@@ -1,4 +1,4 @@
-from kafka import KafkaConsumer, consumer
+from confluent_kafka  import KafkaConsumer, consumer
 import cv2
 import numpy as np
 from multiprocessing import Pool
