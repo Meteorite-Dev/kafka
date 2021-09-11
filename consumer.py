@@ -1,6 +1,5 @@
-from confluent_kafka  import KafkaConsumer, consumer
+from confluent_kafka  import Consumer
 import cv2
-import numpy as np
 from multiprocessing import Pool
 import concurrent.futures
 from string import Template
@@ -13,7 +12,7 @@ kafkaserver = Template("${serveraddr}:9092")
 
 def setting_kafka(server):
     kafkastr = kafkaserver.substitute(serveraddr=server)
-    consumer = KafkaConsumer(
+    consumer = Consumer(
             bootstrap_servers=[kafkastr]
         )
     return consumer 

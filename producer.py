@@ -1,5 +1,4 @@
-from confluent_kafka  import KafkaProducer
-from confluent_kafka .errors import KafkaError
+from confluent_kafka  import Producer
 import cv2
 import os
 from multiprocessing import Pool
@@ -10,15 +9,12 @@ from string import Template
 import random
 import csv
 from turbojpeg import TurboJPEG
-def setting_kafka(server, size=3145728):
-    try:
-        kafkastr = kafkaserver.substitute(serveraddr=server)
-        producer = KafkaProducer(
+def setting_kafka(server="127.0.0.1", size=3145728):
+    kafkastr = kafkaserver.substitute(serveraddr=server)
+    producer = Producer(
             bootstrap_servers=[kafkastr], max_request_size=size,compression_type="lz4"
         )
-        return producer
-    except KafkaError as e:
-        print(e)
+    return producer
 
 def setting_capture(path):
     args = get_args()
