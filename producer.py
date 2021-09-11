@@ -3,12 +3,13 @@ from kafka.errors import KafkaError
 import cv2
 import os
 from multiprocessing import Pool
+import concurrent.futures
 import time
 import argparse
 from string import Template
 import random
 import csv
-
+from turbojpeg import TurboJPEG
 def setting_kafka(server, size=3145728):
     try:
         kafkastr = kafkaserver.substitute(serveraddr=server)
@@ -50,7 +51,7 @@ def publish_video(tp):
         if i < args.dropframe:
             continue
         # encode frame to jpeg then tobytes
-        data = cv2.imencode(".jpeg", frame)[1].tobytes()
+        data = TurboJPEG.imencode(".jpeg", frame)[1].tobytes()
         future = producer.send(topicname, value=data)
         metadata = future.get(timeout=1)
         now_time = round(time.time() * 1000)
@@ -79,10 +80,12 @@ def multithread_publish(args):
         )
         # print(multithread_args[i])
 
-    pool = Pool(args.thread)
-    data = pool.map(publish_video, multithread_args)
-    pool.close()
-    pool.join()
+    # pool = Pool(args.thread)
+    # data = pool.map(publish_video, multithread_args)
+    # pool.close()
+    # pool.join()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.thread) as executor:
+        data = executor.map(publish_video, multithread_args)
     print("----------------------------------------------")
     latency = sum(data) / len(data)
     print("final mean time : ", latency)

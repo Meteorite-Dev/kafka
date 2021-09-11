@@ -2,6 +2,7 @@ from kafka import KafkaConsumer, consumer
 import cv2
 import numpy as np
 from multiprocessing import Pool
+import concurrent.futures
 from string import Template
 import argparse
 import time
@@ -75,10 +76,12 @@ def multithread_consume(args):
         )
         print(multithread_args[i])
     
-    pool = Pool(args.thread)
-    data = pool.map(consume_video, multithread_args)
-    pool.close()
-    pool.join()
+    # pool = Pool(args.thread)
+    # data = pool.map(consume_video, multithread_args)
+    # pool.close()
+    # pool.join()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.thread) as executor:
+        data = executor.map(consume_video, multithread_args)
     print("----------------------------------------------")
     print("final mean time : ", sum(data) / len(data))
     pass
