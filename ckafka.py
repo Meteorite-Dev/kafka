@@ -3,6 +3,8 @@ import cv2
 from string import Template
 import numpy as np 
 
+
+
 """
 kafka consumer 
 yeild need test (Feb. 15)
@@ -31,6 +33,12 @@ class cKafka_Consumer():
     
         return consumer
     
+    """
+    using :
+    let var=func()
+    for nvar in func:
+        print nvar <- message
+    """
     def image_Consumer(self) :
         # receive image using cv2
         while True:
@@ -44,7 +52,6 @@ class cKafka_Consumer():
             # return image in while loop
             image_bytes = msg.value()
             yield cv2.imdecode(np.frombuffer(image_bytes, np.uint8), -1)
-
         
     def test_Consumer(self):
         while True:
@@ -70,12 +77,57 @@ test producer
 json producer 
 """
 class cKafka_Producer():
-    def __init__(self) -> None:
-        pass                
-        
-    
+    def __init__(self, server_ip ,port ,topics):
+        self.server_ip = server_ip
+        self.port = port
+        self.topic = topics
+        self.producer = self.setting()
 
-            
-            
+    def setting(self):
+        kafkaserver = Template("${serveraddr}:${port}")
+        server = kafkaserver.substitute(
+            serveraddr=self.server_ip, port=self.port)
+        producer = Producer({'bootstrap.servers': server})
+
+        return producer
+    
+    def flush(self):
+        self.producer.flush()
+    
+    """ 
+    Called once for each message produced to indicate delivery result.
+        Triggered by poll() or flush(). 
+    """
+    def delivery_report(self,err, msg):
+        if err is not None:
+            print('Message delivery failed: {}'.format(err))
+        else:
+            print('Message delivered to {} [{}]'.format(
+                msg.topic(), msg.partition()))
+    
+    def image_Producer(self , message , topic=None):
+         # Trigger any available delivery report callbacks from previous produce() calls
+        self.producer.poll(0)
+        
+        if self.topic is None:
+            ptopic = topic
+        else:
+            ptopic = self.topic
+        
+        # Asynchronously produce a message, the delivery report callback
+        # will be triggered from poll() above, or flush() below, when the message has
+        # been successfully delivered or failed permanently.
+        self.producer.produce(ptopic, message.to_bytes(), callback=self.delivery_report)
+
+    def test_Producer(self, message ,topic=None):
+        self.producer.poll(0)
+
+        if self.topic is None:
+            ptopic = topic
+        else:
+            ptopic = self.topic
+
+        self.producer.produce(ptopic, message.encode('utf-8'), callback=self.delivery_report)
+
     
     
