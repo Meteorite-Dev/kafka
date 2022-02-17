@@ -2,8 +2,7 @@ from confluent_kafka import Consumer , Producer
 import cv2 
 from string import Template
 import numpy as np 
-
-
+import json
 
 """
 kafka consumer 
@@ -11,6 +10,8 @@ yeild need test (Feb. 15)
 
 need :
 json consumer
+    json serializer 
+    consumer setting 
 """ 
 class cKafka_Consumer():
     def __init__(self, server_ip ,port ,topics):
@@ -23,15 +24,27 @@ class cKafka_Consumer():
     def setting(self):
         kafkaserver = Template("${serveraddr}:${port}")
         server = kafkaserver.substitute(serveraddr=self.server_ip , port=self.port)
+        
         consumer = Consumer({
-                'bootstrap.servers': server ,
-                'group.id': self.group_id,
-                'auto.offset.reset': 'earliest'
-            })
-
+            'bootstrap.servers': server,
+            'group.id': self.group_id,
+            'auto.offset.reset': 'earliest'
+        })
+        
         consumer.subscribe(self.topics)
     
         return consumer
+
+    # json deserializer from utf-8
+    def json_deserializer(self ,jsinput):
+        if jsinput is None :
+            return None
+        else:
+            try:
+               return json.loads(jsinput.decode('utf-8'))  
+            except json.decoder.JSONDecodeError :
+                print("Unable to decode: %s" %jsinput)
+                return -1
     
     """
     using :
@@ -52,7 +65,25 @@ class cKafka_Consumer():
             # return image in while loop
             image_bytes = msg.value()
             yield cv2.imdecode(np.frombuffer(image_bytes, np.uint8), -1)
-        
+
+    """
+    json consumer
+    """
+    def Json_Consumer(self):
+        while True:
+            msg = self.consumer.poll(1)
+
+            if msg is None:
+                continue
+            if msg.error():
+                print("Consumer error: {}".format(msg.error()))
+                continue
+            # return json in while loop
+            ori_js_mes = msg.value()
+            json_mes = self.json_deserializer(ori_js_mes)
+            yield json_mes
+            
+
     def test_Consumer(self):
         while True:
             msg = self.consumer.poll(1)
@@ -105,6 +136,10 @@ class cKafka_Producer():
             print('Message delivered to {} [{}]'.format(
                 msg.topic(), msg.partition()))
     
+    def json_serizilier(self , message):
+        jsmes = json.dumps(message).encode('utf-8')
+        return jsmes
+
     def image_Producer(self , message , topic=None):
          # Trigger any available delivery report callbacks from previous produce() calls
         self.producer.poll(0)
@@ -119,6 +154,17 @@ class cKafka_Producer():
         # been successfully delivered or failed permanently.
         self.producer.produce(ptopic, message.to_bytes(), callback=self.delivery_report)
 
+    def json_Producer(self, message, topic=None):
+        self.producer.poll(0)
+
+        if self.topic is None:
+            ptopic = topic
+        else:
+            ptopic = self.topic
+
+        message = self.json_serizilier(message=message)
+        self.producer.produce(ptopic, message, callback=self.delivery_report)
+
     def test_Producer(self, message ,topic=None):
         self.producer.poll(0)
 
@@ -128,6 +174,3 @@ class cKafka_Producer():
             ptopic = self.topic
 
         self.producer.produce(ptopic, message.encode('utf-8'), callback=self.delivery_report)
-
-    
-    
