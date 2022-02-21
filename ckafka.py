@@ -1,6 +1,3 @@
-from ctypes import CDLL
-CDLL("C:/Users/MingChe/.conda/envs/kafka/Lib/site-packages/confluent_kafka.libs/librdkafka-5d2e2910.dll")
-
 from confluent_kafka import Consumer , Producer
 import cv2 
 from string import Template
