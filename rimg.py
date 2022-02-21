@@ -1,4 +1,3 @@
-import imp
 from ckafka import cKafka_Consumer
 import cv2
 
