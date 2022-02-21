@@ -59,12 +59,20 @@ class cKafka_Consumer():
             
             if msg is None:
                 continue
+
+            print("msg:",type(msg))
             if msg.error():
                 print("Consumer error: {}".format(msg.error()))
                 continue
             # return image in while loop
+            print("msg.value",type(msg.value()))
             image_bytes = msg.value()
-            yield cv2.imdecode(np.frombuffer(image_bytes, np.uint8), -1)
+            print("type image_bytes",type(image_bytes))
+            image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), -1)
+            # image = np.frombuffer(image_bytes ,np.uint8)
+            print("type image",type(image))
+            
+            yield image
 
     """
     json consumer
@@ -73,8 +81,8 @@ class cKafka_Consumer():
         while True:
             msg = self.consumer.poll(1)
 
-            if msg is None:
-                continue
+            # if msg is None:
+            #    continue
             if msg.error():
                 print("Consumer error: {}".format(msg.error()))
                 continue
@@ -149,10 +157,13 @@ class cKafka_Producer():
         else:
             ptopic = self.topic
         
+        message = cv2.imencode('.jpg' ,message)[1]
+        message = message.tobytes()
+
         # Asynchronously produce a message, the delivery report callback
         # will be triggered from poll() above, or flush() below, when the message has
         # been successfully delivered or failed permanently.
-        self.producer.produce(ptopic, message.to_bytes(), callback=self.delivery_report)
+        self.producer.produce(ptopic, message, callback=self.delivery_report)
 
     def json_Producer(self, message, topic=None):
         self.producer.poll(0)

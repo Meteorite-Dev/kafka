@@ -42,10 +42,10 @@ def get_parser():
         metavar="FILE",
         help="path to config file",
     )
-    parser.add_argument("--kafka" ,nargs="+" ,help="--kafka <topic> ,using kafka input image.")
-    parser.add_argument("--ip",nargs="+",help="kafka server ip." ,default="localhost" ,type="string")
-    parser.add_argument("--port" ,nargs="+" ,help="kafka server port." ,default="9092" ,type="string")
-    parser.add_argument("--transtopic", help="--transtopic <topic> ,kafka transfer to <topic>" ,type="string")
+    parser.add_argument("--kafka" ,nargs="+" ,help="--kafka <topic> ,using kafka input image." ,type=str ,required=True)
+    parser.add_argument("--ip",nargs="+",help="kafka server ip." ,default="localhost" ,type=str ,required=True)
+    parser.add_argument("--port" ,nargs="+" ,help="kafka server port." ,default="9092" ,type=str ,required=True)
+    # parser.add_argument("--transtopic", help="--transtopic <topic> ,kafka transfer to <topic>" ,type=str ,required=True)
     parser.add_argument(
         "--output",
         help="A file or directory to save output visualizations. "
@@ -77,15 +77,23 @@ if __name__ == "__main__":
 
     demo = VisualizationDemo(cfg)
 
-    consumer = cKafka_Consumer(server_ip=args.ip ,port=args.port ,topics=args.kafka)
-    producer = cKafka_Producer(server_ip=args.ip, port=args.port, topics=args.kafka)
+    # print(args.ip[0] , args.port)
+ 
+    consumer = cKafka_Consumer(server_ip=args.ip[0] ,port=args.port[0] ,topics=args.kafka)
+    producer = cKafka_Producer(server_ip=args.ip[0], port=args.port[0], topics=args.kafka[0])
 
     """
     producer not yet
     """
+    
     for mes in consumer.image_Consumer():
+        if mes is None:
+            print(type(mes))
+            continue
         start_time = time.time()
-        image = cv2.cvtColor(mes , cv2.cv2.COLOR_RGB2BGR)
+        # image = cv2.cvtColor(mes , cv2.COLOR_RGB2BGR)
+        image = mes
+        print("mes type" ,type(mes))
         predictions, visualized_output = demo.run_on_image(image)
         logger.info(
             "iamge : detected {} instances in {:.2f}s"
@@ -104,9 +112,9 @@ if __name__ == "__main__":
             visualized_output.save(out_filename)
         else:
             # output predictions
-            print(predictions)
+            # print(predictions)
             cv2.imshow(WINDOW_NAME, visualized_output.get_image()[:, :, ::-1])
             if cv2.waitKey(0) == 27:
                 break  # esc to quit
 
-
+    
