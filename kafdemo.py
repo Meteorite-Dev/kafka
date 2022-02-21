@@ -88,12 +88,14 @@ if __name__ == "__main__":
     
     for mes in consumer.image_Consumer():
         if mes is None:
-            print(type(mes))
+            # print(type(mes))
             continue
         start_time = time.time()
-        # image = cv2.cvtColor(mes , cv2.COLOR_RGB2BGR)
+        
+        print("receive time : %d." %(int(mes[2]) - int(mes[1][1])))
+
         image = mes
-        print("mes type" ,type(mes))
+        # print("mes type" ,type(mes))
         predictions, visualized_output = demo.run_on_image(image)
         logger.info(
             "iamge : detected {} instances in {:.2f}s"
@@ -101,6 +103,8 @@ if __name__ == "__main__":
                 time.time() - start_time
             )
         )
+        print("All time : " , time.time() - mes[1][1] )
+
         if args.output:
             if os.path.isdir(args.output):
                 assert os.path.isdir(args.output), args.output
