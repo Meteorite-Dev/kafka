@@ -85,16 +85,18 @@ if __name__ == "__main__":
     """
     producer not yet
     """
-    
-    for mes in consumer.image_Consumer():
+    for mes in consumer.image_Consumer(t=True):
         if mes is None:
             # print(type(mes))
             continue
         start_time = time.time()
-        
-        print("receive time : %d." %(int(mes[2]) - int(mes[1][1])))
+        st = mes[1][1]
+        rt = mes[2]
+        # print(mes)
 
-        image = mes
+        print("receive time : " , (rt-st))
+
+        image = mes[0]
         # print("mes type" ,type(mes))
         predictions, visualized_output = demo.run_on_image(image)
         logger.info(
@@ -103,20 +105,12 @@ if __name__ == "__main__":
                 time.time() - start_time
             )
         )
-        print("All time : " , time.time() - mes[1][1] )
+        print("All time : " , time.time() - int(st) )
 
         if args.output:
-            if os.path.isdir(args.output):
-                assert os.path.isdir(args.output), args.output
-                out_filename = os.path.join(
-                    args.output)
-            else:
-                assert len(args.input) == 1, "Please specify a directory with args.output"
-                out_filename = args.output
-            visualized_output.save(out_filename)
+            # print("send image to {}" .format(args.output))
+            producer.image_Producer(message=visualized_output , topic=args.output)
         else:
-            # output predictions
-            # print(predictions)
             cv2.imshow(WINDOW_NAME, visualized_output.get_image()[:, :, ::-1])
             if cv2.waitKey(0) == 27:
                 break  # esc to quit
