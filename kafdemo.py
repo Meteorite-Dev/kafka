@@ -109,7 +109,7 @@ if __name__ == "__main__":
 
         if args.output:
             # print("send image to {}" .format(args.output))
-            producer.image_Producer(message=visualized_output , topic=args.output)
+            producer.image_Producer(message=visualized_output , topic=args.output[0])
         else:
             cv2.imshow(WINDOW_NAME, visualized_output.get_image()[:, :, ::-1])
             if cv2.waitKey(0) == 27:
