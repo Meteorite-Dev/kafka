@@ -1,17 +1,16 @@
+from ctypes import CDLL
+CDLL("C:/Users/MingChe/.conda/envs/kafka/Lib/site-packages/confluent_kafka.libs/librdkafka-5d2e2910.dll")
+
 from confluent_kafka import Consumer , Producer
 import cv2 
 from string import Template
 import numpy as np 
 import json
+import time
 
 """
 kafka consumer 
-yeild need test (Feb. 15)
-
-need :
-json consumer
-    json serializer 
-    consumer setting 
+update time methood.
 """ 
 class cKafka_Consumer():
     def __init__(self, server_ip ,port ,topics):
@@ -45,6 +44,10 @@ class cKafka_Consumer():
             except json.decoder.JSONDecodeError :
                 print("Unable to decode: %s" %jsinput)
                 return -1
+
+    def mes_timestamp(self, mes):
+        time = mes.timestamp()
+        return time
     
     """
     using :
@@ -52,56 +55,65 @@ class cKafka_Consumer():
     for nvar in func:
         print nvar <- message
     """
-    def image_Consumer(self) :
+    def image_Consumer(self , t=False) :
         # receive image using cv2
         while True:
             msg = self.consumer.poll(1)
-            
             if msg is None:
                 continue
-
+            rtime = time.time()
             print("msg:",type(msg))
             if msg.error():
                 print("Consumer error: {}".format(msg.error()))
                 continue
-            # return image in while loop
-            print("msg.value",type(msg.value()))
-            image_bytes = msg.value()
-            print("type image_bytes",type(image_bytes))
-            image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), -1)
-            # image = np.frombuffer(image_bytes ,np.uint8)
-            print("type image",type(image))
             
-            yield image
+            # return image in while loop            
+            image_bytes = msg.value()            
+            image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), -1)
+
+            if t :
+                stime = self.mes_timestamp(msg)
+                yield image , stime , rtime
+            else :
+                yield image 
 
     """
     json consumer
     """
-    def Json_Consumer(self):
+    def Json_Consumer(self, t=False):
         while True:
             msg = self.consumer.poll(1)
-
-            # if msg is None:
-            #    continue
+            rtime = time.time()
+            if msg is None:
+               continue
             if msg.error():
                 print("Consumer error: {}".format(msg.error()))
                 continue
+            
             # return json in while loop
             ori_js_mes = msg.value()
             json_mes = self.json_deserializer(ori_js_mes)
-            yield json_mes
             
-
-    def test_Consumer(self):
+            if t:
+                stime = self.mes_timestamp(msg)
+                yield json_mes , stime , rtime
+            else :
+                yield json_mes
+            
+    def test_Consumer(self, t=False):
         while True:
             msg = self.consumer.poll(1)
-
+            rtime = int(time.time())
             if msg is None:
                 continue
             if msg.error():
                 print("Consumer error: {}".format(msg.error()))
                 continue
-            yield msg.value().decode('utf-8')
+            if t :
+                stime = self.mes_timestamp(mes=msg)
+                yield msg.value().decode('utf-8') , stime , rtime 
+            else:
+                yield msg.value().decode('utf-8')
 
     def close(self):
         self.consumer.close()
@@ -109,11 +121,7 @@ class cKafka_Consumer():
         
 """
 kafka producer 
-
-need :
-image producer
-test producer
-json producer 
+update time methood.
 """
 class cKafka_Producer():
     def __init__(self, server_ip ,port ,topics):
@@ -132,12 +140,27 @@ class cKafka_Producer():
     
     def flush(self):
         self.producer.flush()
+
+    def prod(self , message , topic_name=None , timestamp=False):
+        if topic_name is None:
+            topic_name = self.topic 
+        if timestamp :
+            self.producer.produce(
+                topic_name, message, callback=self.delivery_report, timestamp=int(time.time()))
+        else:
+            
+            self.producer.produce(topic_name, message,
+                                  callback=self.delivery_report)
+
     
     """ 
     Called once for each message produced to indicate delivery result.
         Triggered by poll() or flush(). 
     """
     def delivery_report(self,err, msg):
+        # Asynchronously produce a message, the delivery report callback
+        # will be triggered from poll() above, or flush() below, when the message has
+        # been successfully delivered or failed permanently.
         if err is not None:
             print('Message delivery failed: {}'.format(err))
         else:
@@ -148,7 +171,7 @@ class cKafka_Producer():
         jsmes = json.dumps(message).encode('utf-8')
         return jsmes
 
-    def image_Producer(self , message , topic=None):
+    def image_Producer(self , message , topic=None, t=False):
          # Trigger any available delivery report callbacks from previous produce() calls
         self.producer.poll(0)
         
@@ -160,12 +183,9 @@ class cKafka_Producer():
         message = cv2.imencode('.jpg' ,message)[1]
         message = message.tobytes()
 
-        # Asynchronously produce a message, the delivery report callback
-        # will be triggered from poll() above, or flush() below, when the message has
-        # been successfully delivered or failed permanently.
-        self.producer.produce(ptopic, message, callback=self.delivery_report)
+        self.prod(message=message , topic_name=ptopic , timestamp=t)
 
-    def json_Producer(self, message, topic=None):
+    def json_Producer(self, message, topic=None, t=False):
         self.producer.poll(0)
 
         if self.topic is None:
@@ -174,9 +194,9 @@ class cKafka_Producer():
             ptopic = self.topic
 
         message = self.json_serizilier(message=message)
-        self.producer.produce(ptopic, message, callback=self.delivery_report)
+        self.prod(message=message, topic_name=ptopic, timestamp=t)
 
-    def test_Producer(self, message ,topic=None):
+    def test_Producer(self, message, topic=None, t=False):
         self.producer.poll(0)
 
         if self.topic is None:
@@ -184,4 +204,4 @@ class cKafka_Producer():
         else:
             ptopic = self.topic
 
-        self.producer.produce(ptopic, message.encode('utf-8'), callback=self.delivery_report)
+        self.prod(message=message, topic_name=ptopic, timestamp=t)
