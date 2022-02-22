@@ -4,6 +4,7 @@ from string import Template
 import numpy as np 
 import json
 import time
+from turbojpeg import TurboJPEG
 
 """
 kafka consumer 
@@ -16,6 +17,7 @@ class cKafka_Consumer():
         self.topics = topics
         self.group_id =0
         self.consumer = self.setting()
+        self.jpeg = TurboJPEG()
     
     def setting(self):
         kafkaserver = Template("${serveraddr}:${port}")
@@ -59,15 +61,15 @@ class cKafka_Consumer():
             if msg is None:
                 continue
             rtime = time.time()
-            print("msg:",type(msg))
+            # print("msg:",type(msg))
             if msg.error():
                 print("Consumer error: {}".format(msg.error()))
                 continue
             
             # return image in while loop            
             image_bytes = msg.value()            
-            image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), -1)
-
+            # image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), -1)
+            image = self.jpeg.decode(np.frombuffer(image_bytes, np.uint8))
             if t :
                 stime = self.mes_timestamp(msg)
                 yield image , stime , rtime
@@ -126,6 +128,7 @@ class cKafka_Producer():
         self.port = port
         self.topic = topics
         self.producer = self.setting()
+        self.jpeg = TurboJPEG()
 
     def setting(self):
         kafkaserver = Template("${serveraddr}:${port}")
@@ -160,9 +163,9 @@ class cKafka_Producer():
         # been successfully delivered or failed permanently.
         if err is not None:
             print('Message delivery failed: {}'.format(err))
-        else:
-            print('Message delivered to {} [{}]'.format(
-                msg.topic(), msg.partition()))
+        # else:
+        #     print('Message delivered to {} [{}]'.format(
+        #         msg.topic(), msg.partition()))
     
     def json_serizilier(self , message):
         jsmes = json.dumps(message).encode('utf-8')
@@ -177,8 +180,9 @@ class cKafka_Producer():
         else:
             ptopic = self.topic
         
-        message = cv2.imencode('.jpg' ,message)[1]
-        message = message.tobytes()
+        # message = cv2.imencode('.jpg' ,message)[1]
+        # message = message.tobytes()
+        message = self.jpeg.encode(message)
 
         self.prod(message=message , topic_name=ptopic , timestamp=t)
 

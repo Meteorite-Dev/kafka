@@ -38,16 +38,16 @@ def get_parser():
     parser = argparse.ArgumentParser(description="Detectron2 Demo")
     parser.add_argument(
         "--config-file",
-        default="configs/quick_schedules/e2e_mask_rcnn_R_50_FPN_inference_acc_test.yaml",
+        default="configs/BlendMask/DLA_34_syncbn_4x.yaml",
         metavar="FILE",
         help="path to config file",
     )
-    parser.add_argument("--kafka" ,nargs="+" ,help="--kafka <topic> ,using kafka input image." ,type=str ,required=True)
-    parser.add_argument("--ip",nargs="+",help="kafka server ip." ,default="localhost" ,type=str ,required=True)
-    parser.add_argument("--port" ,nargs="+" ,help="kafka server port." ,default="9092" ,type=str ,required=True)
-    # parser.add_argument("--transtopic", help="--transtopic <topic> ,kafka transfer to <topic>" ,type=str ,required=True)
+    parser.add_argument("--intopic" ,nargs="+" ,help="--intopic <topic> ,using kafka input image." ,type=str ,required=True)
+    parser.add_argument("--ip",nargs="+",help="kafka server ip." ,default="localhost" ,type=str)
+    parser.add_argument("--port" ,nargs="+" ,help="kafka server port." ,default="9094" ,type=str)
+    parser.add_argument("--outtopic", help="--outtopic <topic> ,kafka transfer to <topic>" ,type=str ,required=True)
     parser.add_argument(
-        "--output",
+        "--imshow",
         help="A file or directory to save output visualizations. "
         "If not given, will show output in an OpenCV window.",
     )
@@ -79,9 +79,9 @@ if __name__ == "__main__":
 
     # print(args.ip[0] , args.port)
  
-    consumer = cKafka_Consumer(server_ip=args.ip[0] ,port=args.port[0] ,topics=args.kafka)
-    producer = cKafka_Producer(server_ip=args.ip[0], port=args.port[0], topics=args.kafka[0])
-
+    consumer = cKafka_Consumer(server_ip=args.ip[0] ,port=args.port[0] ,topics=args.intopic)
+    producer = cKafka_Producer(server_ip=args.ip[0], port=args.port[0], topics=args.outtopic[0])
+    print("recvtime,inference_time,instances_time,alltime")
     """
     producer not yet
     """
@@ -94,25 +94,27 @@ if __name__ == "__main__":
         rt = mes[2]
         # print(mes)
 
-        print("receive time : " , (rt-st))
-
+        # print("receive time : " , (rt-st))
+        print((rt-st),",",end="")
         image = mes[0]
         # print("mes type" ,type(mes))
         predictions, visualized_output = demo.run_on_image(image)
-        logger.info(
-            "iamge : detected {} instances in {:.2f}s"
-                .format(len(predictions["instances"]), 
-                time.time() - start_time
-            )
-        )
-        print("All time : " , time.time() - int(st) )
+        print((time.time()-start_time),",",end="")
 
-        if args.output:
-            # print("send image to {}" .format(args.output))
-            producer.image_Producer(message=visualized_output , topic=args.output)
-        else:
+        # logger.info(
+        #     "iamge : detected {} instances in {:.2f}s"
+        #         .format(len(predictions["instances"]), 
+        #         time.time() - start_time
+        #     )
+        # )
+        # print("All time : " , time.time() - int(st) )
+        print((time.time()-int(st)))
+        
+        if args.imshow:
+            pass
             cv2.imshow(WINDOW_NAME, visualized_output.get_image()[:, :, ::-1])
             if cv2.waitKey(0) == 27:
                 break  # esc to quit
-
-    
+        else:
+            # print("send image to {}" .format(args.outtopic))
+            producer.image_Producer(message= visualized_output.get_image()[:, :, ::-1] , topic=args.outtopic ,t=True)
