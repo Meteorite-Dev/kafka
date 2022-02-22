@@ -99,22 +99,20 @@ if __name__ == "__main__":
         image = mes[0]
         # print("mes type" ,type(mes))
         predictions, visualized_output = demo.run_on_image(image)
-        print((time.time()-start_time),",",end="")
+        logger.info(
+            "iamge : detected {} instances in {:.2f}s"
+                .format(len(predictions["instances"]), 
+                time.time() - start_time
+            )
+        )
+        print("All time : " , time.time() - int(st) )
 
-        # logger.info(
-        #     "iamge : detected {} instances in {:.2f}s"
-        #         .format(len(predictions["instances"]), 
-        #         time.time() - start_time
-        #     )
-        # )
-        # print("All time : " , time.time() - int(st) )
-        print((time.time()-int(st)))
-        
-        if args.imshow:
-            pass
+        if args.output:
+            # print("send image to {}" .format(args.output))
+            producer.image_Producer(message=visualized_output , topic=args.output[0])
+        else:
             cv2.imshow(WINDOW_NAME, visualized_output.get_image()[:, :, ::-1])
             if cv2.waitKey(0) == 27:
                 break  # esc to quit
-        else:
-            # print("send image to {}" .format(args.outtopic))
-            producer.image_Producer(message= visualized_output.get_image()[:, :, ::-1] , topic=args.outtopic ,t=True)
+
+    
