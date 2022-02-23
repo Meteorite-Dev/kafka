@@ -1,3 +1,4 @@
+from tkinter import N
 from confluent_kafka import Consumer , Producer
 import cv2 
 from string import Template
@@ -5,6 +6,7 @@ import numpy as np
 import json
 import time
 from turbojpeg import TurboJPEG
+import  pickle
 
 """
 kafka consumer 
@@ -26,7 +28,7 @@ class cKafka_Consumer():
         consumer = Consumer({
             'bootstrap.servers': server,
             'group.id': self.group_id,
-            'auto.offset.reset': 'earliest'
+            'auto.offset.reset': 'latest'
         })
         
         consumer.subscribe(self.topics)
@@ -113,6 +115,55 @@ class cKafka_Consumer():
                 yield msg.value().decode('utf-8') , stime , rtime 
             else:
                 yield msg.value().decode('utf-8')
+    
+    def basic_Consumer(self , t=False) :
+        while True:
+            msg = self.consumer.poll(1)
+            if msg is None:
+                continue
+            rtime = time.time()
+            # print("msg:",type(msg))
+            if msg.error():
+                print("Consumer error: {}".format(msg.error()))
+                continue      
+            msgBytes = msg.value()            
+            # return bytes
+            if t :
+                stime = self.mes_timestamp(msg)
+                yield msgBytes , stime , rtime
+            else :
+                yield msgBytes 
+    
+    def imgdic_Consumer(self ,t=False):
+        """
+        consumer for Pickle object.
+        transfer to image and dict 
+        """
+        while True :
+            msg = self.consumer.poll(1)
+            if msg is None:
+                continue
+            rtime = time.time()
+
+            if msg.error():
+                print("Consumer error: {}".format(msg.error()))
+                continue
+
+            upick = msg.value()
+            upk_dict = pickle.loads(upick)
+            # image = upk_dict['image']
+            # data = upk_dict['data']            
+            if t :
+                stime = self.mes_timestamp(msg)
+                yield upk_dict ,stime ,rtime
+            else :
+                yield upk_dict
+
+    def pickle_to_imgdata(self , pickle_obj):
+        image = pickle_obj['image']
+        data = pickle_obj['data']
+        yield image ,data 
+
 
     def close(self):
         self.consumer.close()
@@ -141,15 +192,15 @@ class cKafka_Producer():
     def flush(self):
         self.producer.flush()
 
-    def prod(self , message , topic_name=None , timestamp=False):
+    def prod(self , message ,key=None, topic_name=None , timestamp=False):
         if topic_name is None:
             topic_name = self.topic 
         if timestamp :
             self.producer.produce(
-                topic_name, message, callback=self.delivery_report, timestamp=int(time.time()))
+                topic=topic_name, key=key ,value=message, callback=self.delivery_report, timestamp=int(time.time()))
         else:
             
-            self.producer.produce(topic_name, message,
+            self.producer.produce(topic=topic_name, key=key, value=message,
                                   callback=self.delivery_report)
 
     
@@ -171,7 +222,7 @@ class cKafka_Producer():
         jsmes = json.dumps(message).encode('utf-8')
         return jsmes
 
-    def image_Producer(self , message , topic=None, t=False):
+    def image_Producer(self , message , key=None,topic=None, t=False):
          # Trigger any available delivery report callbacks from previous produce() calls
         self.producer.poll(0)
         
@@ -181,12 +232,15 @@ class cKafka_Producer():
             ptopic = self.topic
         
         # message = cv2.imencode('.jpg' ,message)[1]
-        # message = message.tobytes()
+        
         message = self.jpeg.encode(message)
+        # tobytes or not tobytes? 
+        # is a question
+        # message = message.tobytes()
 
-        self.prod(message=message , topic_name=ptopic , timestamp=t)
+        self.prod(message=message,key=key , topic_name=ptopic , timestamp=t)
 
-    def json_Producer(self, message, topic=None, t=False):
+    def json_Producer(self, message, key=None, topic=None, t=False):
         self.producer.poll(0)
 
         if self.topic is None:
@@ -195,9 +249,9 @@ class cKafka_Producer():
             ptopic = self.topic
 
         message = self.json_serizilier(message=message)
-        self.prod(message=message, topic_name=ptopic, timestamp=t)
+        self.prod(message=message,key=key , topic_name=ptopic , timestamp=t)
 
-    def test_Producer(self, message, topic=None, t=False):
+    def test_Producer(self, message, key=None, topic=None, t=False):
         self.producer.poll(0)
 
         if self.topic is None:
@@ -205,4 +259,16 @@ class cKafka_Producer():
         else:
             ptopic = self.topic
 
-        self.prod(message=message, topic_name=ptopic, timestamp=t)
+        self.prod(message=message,key=key , topic_name=ptopic , timestamp=t)
+
+    def imgdic_Producer(self , image, imdata , key=None, topic=None, t=False):
+        self.producer.poll(0)
+        mes_obj = {"image":image ,"data" : imdata}
+
+        # dict to pickle
+        pikobj = pickle.dumps(mes_obj)
+
+        if topic is None :
+            topic = self.topic
+        
+        self.prod(message=pikobj, key=key, topic_name=topic, timestamp=t)
