@@ -1,4 +1,3 @@
-from tkinter import N
 from confluent_kafka import Consumer , Producer
 import cv2 
 from string import Template
