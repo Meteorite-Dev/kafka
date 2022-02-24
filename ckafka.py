@@ -6,7 +6,7 @@ import numpy as np
 import json
 import time
 from turbojpeg import TurboJPEG
-import  pickle
+import  quickle
 
 """
 kafka consumer 
@@ -136,7 +136,7 @@ class cKafka_Consumer():
     
     def imgdic_Consumer(self ,t=False):
         """
-        consumer for Pickle object.
+        consumer for quickle object.
         transfer to image and dict 
         """
         while True :
@@ -150,7 +150,7 @@ class cKafka_Consumer():
                 continue
 
             upick = msg.value()
-            upk_dict = pickle.loads(upick)
+            upk_dict = quickle.loads(upick)
             # image = upk_dict['image']
             # data = upk_dict['data']            
             if t :
@@ -159,9 +159,9 @@ class cKafka_Consumer():
             else :
                 yield upk_dict
 
-    def pickle_to_imgdata(self , pickle_obj):
-        image = pickle_obj['image']
-        data = pickle_obj['data']
+    def quickle_to_imgdata(self , quickle_obj):
+        image = quickle_obj['image']
+        data = quickle_obj['data']
         yield image ,data 
 
 
@@ -265,8 +265,8 @@ class cKafka_Producer():
         self.producer.poll(0)
         mes_obj = {"image":image ,"data" : imdata}
 
-        # dict to pickle
-        pikobj = pickle.dumps(mes_obj)
+        # dict to quickle
+        pikobj = quickle.dumps(mes_obj)
 
         if topic is None :
             topic = self.topic
